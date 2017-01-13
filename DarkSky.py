@@ -12,7 +12,7 @@ class DarkSky(object):
 
     ###############################
     # Initialize
-    def __init__(self, api_key, location_lat='', location_long='', units='si', exclude='minutely,hourly'):
+    def __init__(self, api_key, location_lat='', location_long='', units='si', exclude='hourly'):
         """
         Initialize DarkSky class, building the full URL
         """
@@ -106,26 +106,39 @@ class DarkSky(object):
 
 
         if self.when == 'today':
-            temp_current = self.json_response['currently']['temperature']
-            temp_feelslike = self.json_response['currently']['apparentTemperature']
-            summary_now = self.json_response['currently']['summary']
-            summary_week = self.json_response['daily']['summary']
-            self.forecast_response = 'It is %s and %d degrees, feeling like %d. Expect %s' % (summary_now, temp_current, temp_feelslike, summary_week)
+            current_summary = self.json_response['currently']['summary']
+            current_temp = self.json_response['currently']['temperature']
+            current_temp_feel = self.json_response['currently']['apparentTemperature']
+
+            summary_week = self.json_response['hourly']['summary']
+
+            weather_alert = ''
+            if (self.json_response.get('alerts') is not None):
+                for each_alert in self.json_response['alerts']:
+                    weather_alert += 'Alert for %s. ' % each_alert['title']
+
+            # First Alerts
+            self.forecast_response = weather_alert
+            # Then the current temp
+            self.forecast_response += '%s and %d degrees' % (current_summary, current_temp)
+            # Feels Like -- if different from current temp
+            if (current_temp <> current_summary):
+                self.forecast_response += ' feeling like %d. ' % current_temp_feel
+            # Rest of the day
+            self.forecast_response += 'Expect %s' % (summary_week)
+
         else:
             temp_min = self.json_response['daily']['data'][when]['temperatureMin']
             temp_max = self.json_response['daily']['data'][when]['temperatureMax']
             summary = self.json_response['daily']['data'][when]['summary']
-            self.forecast_response = 'will see %s  With temperatures from %d to %d degrees' % (summary, temp_min, temp_max)
+            self.forecast_response = '%s  With temperatures from %d to %d degrees' % (summary, temp_min, temp_max)
 
-
-        if (self.json_response.get('alerts') is not None):
-            print('ALERT ALERT')
-            print self.json_response['alerts']
 
         forecast_result = self.forecast_response
         forecast_result = forecast_result.replace(u'\N{DEGREE SIGN}' + 'C',' degrees')
-        forecast_result = forecast_result.replace('until', 'until the')
+        #forecast_result = forecast_result.replace('until', 'until the')
         forecast_result = forecast_result.replace('precipitation', 'rain')
+        forecast_result = forecast_result.replace('-', 'minus ')
 
 
         return forecast_result
